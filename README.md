@@ -1,12 +1,12 @@
 # MPWyzards
 
-A top-down 2D multiplayer action game built in Unity 6.3 for the Sistemas de Redes para Jogos 2025/2026 course project.
+A top-down 2D multiplayer action game built in Unity 6.3 for the Sistemas de Redes para Jogos 2025/2026 course project. For this particular case very focused on the lobbies/matchmaking part, casual/custom lobbies, custom elo earned/lost in matches and leaderboard.
 
 ---
 
 ## Overview
 
-MPWyzards is a 2-player online game where both players control a wizard that automatically shoots at AI enemies. You collect XP from kills to level up and pick upgrades like more damage or faster shooting. The match is technically cooperative since you're both fighting the same enemies, but competitive because the first one to die loses.
+MPWyzards is a 2-player online game where both players control a wizard that automatically shoots at enemies. You collect XP from kills to level up and pick up upgrades. The match is technically cooperative since you're both fighting the same enemies, but competitive because the first one to die loses.
 
 There are two ways to play: **Casual**, where the host shares a code and the other player joins with it, and **Ranked**, which automatically finds an opponent and starts a countdown before the match.
 
@@ -14,15 +14,15 @@ There are two ways to play: **Casual**, where the host shares a code and the oth
 
 ## How to Play
 
-MPWyzards requires an internet connection to play. There is no LAN mode - everything goes through Unity Multiplayer Services, so both players need to be online.
+MPWyzards requires an internet connection to play. There is no LAN mode since everything goes through Unity Multiplayer Services, so both players need to be online.
 
 Once the game starts you get signed in automatically, no account or password needed. From the main menu you pick one of two options:
 
-**Casual** - one player creates a lobby and gets a join code, then shares it with the other player however they want (Discord, message, etc). The other player types the code in and joins. The host then presses Start when both players are in.
+**Casual:** one player creates a lobby and gets a join code, then shares it with the other player however they want (Discord, message, etc). The other player types the code in and joins. The host then presses Start when both players are in.
 
-**Ranked** - both players just press Search and the game finds each other automatically. Once matched, a 10 second countdown starts and the match begins.
+**Ranked:** both players just press Search and the game finds each other automatically. Once matched, a 10 second countdown starts and the match begins.
 
-That's it. No server setup, no port forwarding, nothing to configure.
+No server setup, no port forwarding, nothing to configure.
 
 ---
 
@@ -50,7 +50,7 @@ Matchmaking uses `MatchmakeSessionAsync` with a filter of `AvailableSlots >= 1` 
 
 ### Player Data & Persistence
 
-Player ELO is stored in **Unity Leaderboards** under the ID `"elo-ranking"`. There are no local save files - everything lives in Unity's cloud, so it persists even if the server restarts or the player plays on a different machine.
+Player ELO is stored in **Unity Leaderboards** under the ID `"elo-ranking"`. There are no local save files: everything lives in Unity's cloud, so it persists even if the server restarts or the player plays on a different machine.
 
 When a player joins a lobby, they first fetch their own leaderboard score, then send it to the host. The host collects both players' data and broadcasts it back to everyone so the lobby screen shows both names and ratings.
 
@@ -59,13 +59,12 @@ When a player joins a lobby, they first fetch their own leaderboard score, then 
 ELO is calculated on the host at the end of the match inside `SessionConnector.CalculateElo`. The formula takes into account three things: the rating difference between players, who got more kills, and how long the match lasted.
 
 ```
-eWinner = 1 / (1 + 10^((loserRating - winnerRating) / 400))
-expMod  = (1 - eWinner) * 2
+eWinner = 1f / (1f + 10f ^ ((loserRating - winnerRating) / 400f))
+expMod  = (1f - eWinner) * 2f
 
-killMod   = Lerp(0.65, 1.35, winnerKills / totalKills)
-baseValue = Round(25 * expMod * killMod)
+killMod   = Lerp(0.65f, 1.35f, winnerKills / totalKills)
+baseValue = Round(25f * expMod * killMod)
 
-// time bonus is added to both players
 if duration < 5 min:  timeBonus = Lerp(-12, 0, duration / 5)
 if duration >= 5 min: timeBonus = Lerp(0, 12, (duration - 5) / 7)
 
@@ -73,11 +72,11 @@ winnerValue = baseValue + timeBonus
 loserValue  = baseValue - timeBonus
 ```
 
-The key idea with the time bonus is that it's applied positively to both players - so a long match rewards the winner with a bit more and softens the loss for the loser. A short match does the opposite: the winner earns less and the loser loses more, which discourages dying early on purpose.
+The key idea with the time bonus is that it's applied positively to both players: so a long match rewards the winner with a bit more and softens the loss for the loser. A short match does the opposite: the winner earns less and the loser loses more, which discourages dying early on purpose(or players who want to abuse some kind of trading rating and scaling infinitely together, this can still happen if both players actually play for a long time during the match but that would be impossible with the game balancing if it existed).
 
-The rating difference matters too - if a lower-rated player wins, they gain a lot more than if a higher-rated player wins the same match.
+The rating difference matters too: if a lower-rated player wins, they gain a lot more than if a higher-rated player wins the same match.
 
-Ranks go from Recruit (0) up to Commander (3000+), with thresholds at 800, 1000, 1250, 1500, 1750, 2000, 2300, and 2600. Players start at 1000, which puts them at Corporal.
+Ranks go from Recruit (0) up to Commander (3000+), with thresholds at 800, 1000, 1200, 1450, 1750, 2000, 2300, 2600 and 3000. Players start at 1000, which puts them at Corporal.
 
 ### How Scenes Work
 
@@ -94,17 +93,15 @@ The singletons that need to survive between scenes - `NetworkManager`, `SessionM
 ```
 [ Unity Gaming Services ]
   - Authentication (sign-in tokens)
-  - Multiplayer Services SDK (sessions, transport, matchmaking)
-  - Leaderboards (ELO storage)
-          |
-          | both players connect through here
-          |
+  - Multiplayer Services (sessions, transport, matchmaking)
+  - Leaderboards (ELO ranking)
+
    [ HOST / Listen-Server ]
      runs all game logic (AI, damage, kills, ELO)
      sends state to client via NetworkVariables and RPCs
-          |
-          | UDP transport (managed by MPS SDK)
-          |
+          ||
+          || UDP transport (managed by MultiplayerServices)
+          ||
       [ CLIENT ]
         sends input (move, shoot) to host
         receives health, position, level, match result
@@ -116,27 +113,27 @@ The singletons that need to survive between scenes - `NetworkManager`, `SessionM
 
 These are all the RPCs used in the project:
 
-`SendToServerPlayerInformationRpc` - sent by each client to the host when entering a lobby, carries the player's name, rating and rank.
+`SendToServerPlayerInformationRpc`: sent by each client to the host when entering a lobby, carries the player's name, rating and rank.
 
-`SendLobbyInformationToPlayerRpc` - host sends this back to everyone after collecting both players' info, so the lobby screen updates.
+`SendLobbyInformationToPlayerRpc`: host sends this back to everyone after collecting both players' info, so the lobby screen updates.
 
-`CasualLobbyIsStartingRpc` - host fires this when pressing Start in a casual lobby, tells all clients to get ready.
+`CasualLobbyIsStartingRpc`: host fires this when pressing Start in a casual lobby, tells all clients to get ready.
 
-`RankedMatchIsStartingRpc` - same thing but for ranked, fired when the countdown hits zero.
+`RankedMatchIsStartingRpc`: same thing but for ranked, fired when the countdown hits zero.
 
-`ShootRpc` - client tells the host it wants to shoot; host spawns the projectile and owns it.
+`ShootRpc`:client tells the host it wants to shoot; host spawns the projectile and owns it.
 
-`LevelUpRpc` - host broadcasts to all clients when a player levels up, so the particle effect plays on both screens.
+`LevelUpRpc`: host broadcasts to all clients when a player levels up, so the particle effect plays on both screens.
 
-`SelectPowerupRpc` - host sends this only to the player who levelled up, to show them the upgrade choice UI.
+`SelectPowerupRpc`: host sends this only to the player who levelled up, to show them the upgrade choice UI.
 
-`UpgradeRpc` - client sends back which upgrade was chosen; host applies it by changing the relevant NetworkVariable.
+`UpgradeRpc`: client sends back which upgrade was chosen; host applies it by changing the relevant NetworkVariable.
 
-`SendEndScreenToPlayerRpc` - host sends each player their individual result (win/loss + ELO change) after the match.
+`SendEndScreenToPlayerRpc`: host sends each player their individual result (win/loss + ELO change) after the match.
 
-`SendDebugToAllRpc` - host broadcasts a debug stats string to all clients at match end.
+`SendDebugToAllRpc`: host broadcasts a debug stats string to all clients at match end.
 
-The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.damage`, `Wyzard._level/_xp/_maxXP`, and `Projectile.shotTime/origin`. All are server-authoritative and replicated to clients automatically by NGO.
+The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.damage`, `Wyzard._level/_xp/_maxXP`, and `Projectile.shotTime/origin`. All are server-authoritative and replicated to clients automatically by the netcode for gameobjects.
 
 ---
 
@@ -146,7 +143,7 @@ The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.
 
 `SessionManager` wraps the MPS session object and exposes helper methods like `CancelLobbyAsHost()` and `LeaveLobby()`.
 
-`SessionConnector` is the main network script - it's a `NetworkBehaviour` singleton that holds all RPCs, the lobby data, the ELO calculation, and the match end logic.
+`SessionConnector` is the main network script: it's a `NetworkBehaviour` singleton that holds all RPCs, the lobby data, the ELO calculation, and the match end logic.
 
 `MainMenuManager` runs the entire main menu as a state machine, handling all the panel transitions, lobby flows, and post-match cleanup.
 
@@ -154,7 +151,7 @@ The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.
 
 `GameManager` is a scene singleton that keeps track of how many kills each player has, stored in a `Dictionary<ulong, int>` keyed by client ID.
 
-`Wyzard` is the player script - handles movement, auto-aim, shooting via `ShootRpc`, and the XP/upgrade system.
+`Wyzard` is the player script: handles movement, auto-aim, shooting via `ShootRpc`, and the XP/upgrade system.
 
 `Character` is the base class for anything with health. Calls `SessionConnector.PlayerLost` when health hits zero.
 
@@ -162,7 +159,7 @@ The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.
 
 `Projectile` moves deterministically using `NetworkVariable` origin and server timestamp, does `LinecastAll` collision on the host, and records kills against `shooterClientId`.
 
-`Enemy` is the AI - it just moves toward the nearest player and attacks on a timer, all server-side.
+`Enemy` is the AI: it just moves toward the nearest player and attacks on a timer, all server-side controlled.
 
 `Spawner` spawns enemy waves on the host relative to where the players are.
 
@@ -172,14 +169,14 @@ The main NetworkVariables are `HealthSystem.health`, `Wyzard.cooldown`, `Wyzard.
 
 ## External Packages
 
-- `com.unity.services.multiplayer` - the MPS SDK that handles sessions, relay, and matchmaking in one API
-- `com.unity.services.authentication` - anonymous sign-in and token management
-- `com.unity.services.leaderboards` - storing and reading ELO scores
-- `com.unity.services.analytics` - logging kill and level-up events
-- `com.unity.netcode.gameobjects` - the core networking layer (NGO)
-- `com.unity.inputsystem` - player input
-- `com.unity.multiplayer.playmode` - lets multiple editor instances sign in as different players for testing
-- `TextMeshPro` - all UI text
+- `com.unity.services.multiplayer`: the MPS SDK that handles sessions, relay, and matchmaking in one API
+- `com.unity.services.authentication`: anonymous sign-in and token management
+- `com.unity.services.leaderboards`: storing and reading ELO scores
+- `com.unity.services.analytics`: logging kill and level-up events
+- `com.unity.netcode.gameobjects`: the core networking layer (NGO)
+- `com.unity.inputsystem`: player input
+- `com.unity.multiplayer.playmode`: lets multiple editor instances sign in as different players for testing
+- `TextMeshPro`: all UI text
 
 ---
 
