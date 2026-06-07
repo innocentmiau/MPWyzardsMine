@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Scripts.Core;
 using Scripts.Systems.Interface;
-using Scripts.Systems.Interface;
 using Scripts.Systems.MainMenu.Lobby;
 using Scripts.Systems.Network;
 using Scripts.Systems.Network.Lobby;
